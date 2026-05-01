@@ -49,6 +49,27 @@ export interface Note {
   mood?: 1 | 2 | 3 | 4 | 5;
   sideEffects?: string[];
   text?: string;
+  intensity?: number; // 1..10 부작용 강도
+}
+
+export interface DoseStage {
+  id: string;
+  drug: Drug;
+  step: number;
+  doseMg: number;
+  startDate: string;       // ISO yyyy-mm-dd
+  endDate?: string;
+  note?: string;
+}
+
+export interface Profile {
+  name: string;
+  drug?: Drug;
+  startDate?: string;       // 약 시작일
+  startWeightKg?: number;
+  goalWeightKg?: number;
+  doctor?: string;
+  hospital?: string;
 }
 
 export const STORAGE_KEYS = {
@@ -56,4 +77,6 @@ export const STORAGE_KEYS = {
   weights: "glp1.weights",
   meals: "glp1.meals",
   notes: "glp1.notes",
+  doseStages: "glp1.doseStages",
+  profile: "glp1.profile",
 } as const;

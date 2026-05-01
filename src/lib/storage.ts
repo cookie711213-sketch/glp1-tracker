@@ -86,3 +86,45 @@ export function useStoredList<T extends HasId>(
 
   return [items, { add, update, remove, replaceAll }];
 }
+
+export function loadObject<T>(key: string): T | null {
+  if (!isBrowser()) return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+export function saveObject<T>(key: string, value: T): void {
+  if (!isBrowser()) return;
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+export function useStoredObject<T>(
+  key: string,
+): [T | null, (next: T | null) => void, boolean] {
+  const [value, setValue] = useState<T | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setValue(loadObject<T>(key));
+    setLoaded(true);
+  }, [key]);
+
+  const persist = useCallback(
+    (next: T | null) => {
+      setValue(next);
+      if (next === null) {
+        if (isBrowser()) window.localStorage.removeItem(key);
+      } else {
+        saveObject(key, next);
+      }
+    },
+    [key],
+  );
+
+  return [value, persist, loaded];
+}
