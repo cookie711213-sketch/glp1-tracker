@@ -48,7 +48,7 @@ export default function ProfileGate() {
             <Input
               id="name"
               autoFocus
-              placeholder="예: 김민지"
+              placeholder="예: 이승환"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
