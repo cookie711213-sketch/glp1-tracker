@@ -1,65 +1,120 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from "next/link";
+import WeightChart from "@/components/WeightChart";
+import { useStoredList } from "@/lib/storage";
+import {
+  Injection,
+  Meal,
+  Note,
+  STORAGE_KEYS,
+  WeightEntry,
+} from "@/lib/types";
+import { differenceInCalendarDays, format, parseISO } from "date-fns";
+
+export default function Dashboard() {
+  const [injections] = useStoredList<Injection>(STORAGE_KEYS.injections);
+  const [weights] = useStoredList<WeightEntry>(STORAGE_KEYS.weights);
+  const [meals] = useStoredList<Meal>(STORAGE_KEYS.meals);
+  const [notes] = useStoredList<Note>(STORAGE_KEYS.notes);
+
+  const lastInj = [...injections].sort((a, b) => b.date.localeCompare(a.date))[0];
+  const nextInjDate = lastInj
+    ? new Date(parseISO(lastInj.date).getTime() + 7 * 86400000)
+    : null;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const todayMeals = meals.filter((m) => m.datetime.slice(0, 10) === today);
+  const todayNote = notes.find((n) => n.date === today);
+
+  const recentWeights = [...weights]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-7);
+
+  const startW = [...weights].sort((a, b) => a.date.localeCompare(b.date))[0];
+  const latestW = [...weights].sort((a, b) => b.date.localeCompare(a.date))[0];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="grid gap-6">
+      <header>
+        <h1 className="text-2xl font-bold">대시보드</h1>
+        <p className="text-sm opacity-70 mt-1">{today}</p>
+      </header>
+
+      <section className="grid grid-cols-2 gap-3">
+        <Card title="다음 주사">
+          {lastInj && nextInjDate ? (
+            <>
+              <div className="text-lg font-semibold">
+                {format(nextInjDate, "MM/dd")}
+              </div>
+              <div className="text-xs opacity-70">
+                {differenceInCalendarDays(nextInjDate, new Date())}일 남음 ·{" "}
+                {lastInj.drug === "wegovy" ? "위고비" : "마운자로"} {lastInj.doseMg}mg
+              </div>
+            </>
+          ) : (
+            <Empty href="/injections" label="첫 주사 기록하기" />
+          )}
+        </Card>
+
+        <Card title="현재 체중">
+          {latestW ? (
+            <>
+              <div className="text-lg font-semibold">{latestW.weightKg} kg</div>
+              {startW && startW.id !== latestW.id && (
+                <div className="text-xs opacity-70">
+                  시작 대비 {(latestW.weightKg - startW.weightKg).toFixed(1)} kg
+                </div>
+              )}
+            </>
+          ) : (
+            <Empty href="/weight" label="첫 체중 기록하기" />
+          )}
+        </Card>
+
+        <Card title="오늘 식단">
+          <div className="text-lg font-semibold">{todayMeals.length}건</div>
+          <div className="text-xs opacity-70">
+            {todayMeals.reduce((s, m) => s + (m.kcal ?? 0), 0)} kcal
+          </div>
+        </Card>
+
+        <Card title="오늘 메모">
+          {todayNote ? (
+            <>
+              <div className="text-lg font-semibold">기록 완료</div>
+              <div className="text-xs opacity-70 truncate">
+                {todayNote.text ?? todayNote.sideEffects?.join(", ") ?? "—"}
+              </div>
+            </>
+          ) : (
+            <Empty href="/notes" label="오늘 메모 남기기" />
+          )}
+        </Card>
+      </section>
+
+      <section>
+        <h2 className="font-semibold mb-2 text-sm opacity-80">최근 체중</h2>
+        <WeightChart entries={recentWeights} height={180} />
+      </section>
     </div>
+  );
+}
+
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="p-4 rounded-lg border border-black/10 dark:border-white/10 grid gap-1">
+      <div className="text-xs opacity-60">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function Empty({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href} className="text-sm underline opacity-80 hover:opacity-100">
+      {label}
+    </Link>
   );
 }
